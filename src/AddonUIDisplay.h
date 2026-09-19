@@ -1246,7 +1246,9 @@ static void DisplaySettings(AddonImGui::AddonUIData& instance, reshade::api::eff
         for (const auto& group : toRemove) {
             instance.SignalToggleGroupRemoved(runtime, group);
 
-            std::erase_if(instance.GetToggleGroups(), [&group](const auto& item) { return item.first == group->getId(); });
+            // Retire instead of erasing: the group object stays alive (and at the same address)
+            // until device teardown, so render threads that still hold its pointer can't crash.
+            instance.RetireToggleGroup(group->getId());
         }
 
         for (const auto& group : toDuplicate) {
@@ -1273,7 +1275,7 @@ static void DisplaySettings(AddonImGui::AddonUIData& instance, reshade::api::eff
             for (auto& [_, group] : instance.GetToggleGroups()) {
                 instance.SignalToggleGroupRemoved(runtime, &group);
             }
-            instance.GetToggleGroups().clear();
+            instance.RetireAllToggleGroups();
             instance.LoadShaderTogglerIniFile();
             instance.UpdateToggleGroupsForShaderHashes();
         }
